@@ -62,12 +62,11 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
 
 - **Object references & relationships**
   - When a field refers to another Kubernetes object, check that naming and schema follow Kubernetes API conventions:
-    - Name-only references: use `fooName` (string)
-    - Object references: use `fooRef` / `fooRefs` (structured object(s))
+    - Object references: use `fooRef` / `fooRefs` (structured object(s)), also do this if only the name is needed (please load [`./references/object-references.md`](./references/object-references.md) for more details on the recommended naming conventions)
+    - Name-only references are acceptable for existing situations (e.g. `fooName` (string)), do NOT use this for new developemnts.
   - Watch for cross-namespace references (security boundary) and for leaking copied values from the referenced object into `spec`/`status`.
 
 If needed, load [`./references/object-references.md`](./references/object-references.md).
-
 If needed, load [`./references/validation-and-cel.md`](./references/validation-and-cel.md).
 
 ### 4) GitOps/SSA ergonomics
