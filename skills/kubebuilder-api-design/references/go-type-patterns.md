@@ -2,6 +2,8 @@
 
 Use this file when mapping an API shape into idiomatic Kubernetes Go types in Kubebuilder projects.
 
+For marker syntax (validation/defaulting, list semantics, printer columns), see [`api_reference.md`](skills/kubebuilder-api-design/references/api_reference.md:1).
+
 ## Contents
 
 - Optional vs required fields
@@ -77,20 +79,19 @@ For references to other objects, choose one of:
 1. Simple string name (most common):
 
 ```go
-// +kubebuilder:validation:MinLength=1
 SecretName string `json:"secretName"`
 ```
+
+Add validation markers (e.g., `MinLength`) as appropriate; see [`api_reference.md`](skills/kubebuilder-api-design/references/api_reference.md:31).
 
 2. Structured reference (name + optional namespace, plus kind/group if needed):
 
 ```go
 type LocalObjectReference struct {
-  // +kubebuilder:validation:MinLength=1
   Name string `json:"name"`
 }
 
 type NamespacedObjectReference struct {
-  // +kubebuilder:validation:MinLength=1
   Name string `json:"name"`
   Namespace string `json:"namespace,omitempty"`
 }
@@ -103,7 +104,6 @@ If you need to reference arbitrary Kinds, avoid inventing your own schema blindl
 Enums:
 
 ```go
-// +kubebuilder:validation:Enum=Pending;Ready;Failed
 type Phase string
 
 const (
@@ -112,5 +112,7 @@ const (
   PhaseFailed  Phase = "Failed"
 )
 ```
+
+When you want the CRD schema to restrict allowed values, add an enum validation marker; see [`api_reference.md`](skills/kubebuilder-api-design/references/api_reference.md:31).
 
 OpenAPI unions (`oneOf`) are limited in CRDs. Prefer explicit structs with clear fields over clever unions.

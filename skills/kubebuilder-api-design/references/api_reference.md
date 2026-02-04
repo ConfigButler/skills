@@ -30,12 +30,13 @@ Common:
 
 ## Field-level markers
 
-### Required vs optional
+### Required vs optional (where markers are *not* the main tool)
 
-Prefer OpenAPI-required (not `omitempty`) for required fields.
+Whether a field is required is primarily expressed via Go types + `json` tags (pointer vs non-pointer, `omitempty` vs no `omitempty`).
 
-- Required field: no `omitempty`, non-pointer (or pointer with `+kubebuilder:validation:Required` only if you must)
-- Optional field: `omitempty` and usually pointer for scalars
+Keep the rules in one place: see [`go-type-patterns.md`](skills/kubebuilder-api-design/references/go-type-patterns.md:1).
+
+Use this file mainly for validation/defaulting markers once you have the Go shape.
 
 ### Strings
 
