@@ -60,7 +60,18 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
 - Defaulting and nullable behavior
 - Type constraints, patterns, min/max bounds
 - Structural schema: ensure `spec.preserveUnknownFields: false` for strict validation and automatic version conversion
-- **Object references & relationships:** When a field refers to another Kubernetes object, use structured references (`fooRef` / `fooRefs`) per conventions. Name-only references (`fooName` as string) acceptable only for existing APIs, not new ones. Watch for cross-namespace references (security boundaries) and spec/status leakage. See [`./references/object-references.md`](./references/object-references.md) for details.
+- **Object references & relationships:** When a field refers to another Kubernetes object, use structured references (`fooRef` / `fooRefs`) per conventions. Name-only references (`fooName` as string) acceptable only for existing APIs, not new ones. Watch for cross-namespace references (security boundaries) and spec/status leakage. 
+  - Use an object with `group`, `kind`, and `name`
+      - add defaults and enum constraints for `group` and `kind`
+      - require `name`: always
+      - you MAY (very unlikely) add `uid`: UID is assigned by the API server and is not user-friendly or stable for config. It changes if the object is deleted/recreated, therefore you should not use them in spec, but only for reporting on the status field.
+
+In Kubernetes APIs, users reference objects by name + namespace (or just name when same-namespace). The UID belongs in status/observed state, not desired state.Do only do this if you have a real requirement, name is the 'normal' way to reference a resource.
+  - Omit `namespace` unless you explicitly allow cross-namespace references.
+  - Avoid `apiVersion` in references.
+  - `dependsOn` is an advisable (community) deviation from the `fooRefs` advise. Use it when you explicitly model a dependency graph and your controller implements full DAG semantics (readiness definition, scope rules, cycle detection). See [`./references/object-references.md`](./references/object-references.md).
+  - Use `parentRef` only for resources your operator directly manages; do not use it to model general relationships.
+  - See [`./references/object-references.md`](./references/object-references.md) for schema examples and deeper guidance.
 
 #### Step 2: CEL validation (before webhooks)
 When cross-field invariants or complex constraints cannot be expressed with basic OpenAPI rules, use CEL (`x-kubernetes-validations`):
