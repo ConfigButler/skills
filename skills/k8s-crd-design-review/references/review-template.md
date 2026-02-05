@@ -27,7 +27,7 @@ Use this template as a PR review comment. Keep headings intact.
 - Conditions + `observedGeneration`:
   - …
 
-## Schema correctness (validation, defaults, CEL)
+## Schema correctness & webhooks (validation, defaults, CEL)
 
 - Required/enums:
   - …
@@ -35,6 +35,10 @@ Use this template as a PR review comment. Keep headings intact.
   - …
 - Object references & relationships:
   - reference field naming (prefer `*Ref`/`*Refs` over `*Name`), namespace scoping, and any info-leak hazards
+- Webhook configuration:
+  - conversion webhook presence if serving multiple versions with complex schema differences
+  - validation/mutation webhook presence if advanced validation/mutation not covered by OpenAPI/CEL
+  - `spec.preserveUnknownFields: false` (structural schema) status
 
 ## GitOps/SSA ergonomics (lists, patchability)
 

@@ -1,0 +1,9 @@
+[submodule "docs/kubernetes/website"]
+	path = docs/kubernetes/website
+	url = https://github.com/kubernetes/website.git
+[submodule "docs/kubernetes-sig/kubebuilder"]
+	path = docs/kubernetes-sig/kubebuilder
+	url = https://github.com/kubernetes-sigs/kubebuilder
+[submodule "docs/kubernetes/community"]
+	path = docs/kubernetes/community
+	url = https://github.com/kubernetes/community.git

@@ -2,6 +2,16 @@
 
 CRD schema validation is part of the API contract. The goal is to prevent invalid stored objects, not just to improve documentation.
 
+## Three-step validation hierarchy (mandatory philosophy)
+
+Always follow this order to prevent over-engineering with webhooks:
+
+1. **Schema validation (required):** required fields, enums, patterns, min/max bounds, structural schema
+2. **CEL validation (before webhooks):** cross-field constraints, stateless rules with clear error messages
+3. **Webhooks (only if 1–2 are insufficient):** conversion webhooks, validation webhooks, mutation webhooks—but only when absolutely necessary
+
+This progression ensures your validation is maintainable, version-safe, and doesn't introduce unnecessary operational complexity.
+
 ## Baseline: required + enums
 
 - Mark truly required invariants as required.
@@ -26,6 +36,8 @@ properties:
 ## Cross-field constraints: CEL (`x-kubernetes-validations`)
 
 Use CEL when invalid combinations cannot be expressed with simple OpenAPI rules.
+
+> **For a deep dive in CEL code:** See the [cel-k8s skill](https://skills.sh/tyrchen/claude-skills/cel-k8s) for comprehensive guidance on writing more advanced CEL expressions for Kubernetes ValidatingAdmissionPolicies, CRD validation rules, and security policies.
 
 ### Example: `replicas` only allowed in Manual mode
 

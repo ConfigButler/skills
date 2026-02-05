@@ -1,7 +1,7 @@
 ---
 name: k8s-crd-design-review
 description: |
-  Use when reviewing Kubernetes CustomResourceDefinition (CRD) YAML (full manifests or diffs) as the compiled API contract: schema/validation correctness (OpenAPI/CEL), spec vs status boundaries, conditions/observedGeneration conventions, SSA/GitOps list semantics and patchability, printer columns, object-reference modeling (resource relationships: one-to-one, one-to-many), and compatibility/migration risk (breaking-change risk, versioning, rollout). Not for Kubebuilder marker/Go-type selection; use kubebuilder-api-design.
+  Use when reviewing Kubernetes CustomResourceDefinition (CRD) YAML (full manifests or diffs) as the compiled API contract. Topics: schema/validation (3-step hierarchy: schema → CEL → webhooks only if necessary), spec/status boundaries, conditions/observedGeneration conventions, object-reference modeling resource relationships: one-to-one, one-to-many), SSA/GitOps list semantics, printer columns, and compatibility/migration risk (breaking changes, versioning, rollout). Not for Kubebuilder Go-type selection; use kubebuilder-api-design instead.
 ---
 
 # Kubernetes CRD Design Review
@@ -13,7 +13,6 @@ Perform a deterministic design + contract review for Kubernetes CRDs (the genera
 Accept at least one of:
 
 - CRD YAML (full manifest) or a CRD diff
-- Go API types and/or kubebuilder markers used to generate the CRD
 - A short description of intended API semantics and controller behavior
 
 If key info is missing, ask for it before concluding compatibility/migration:
@@ -40,82 +39,92 @@ If key info is missing, ask for it before concluding compatibility/migration:
   - Flag lifecycle/state-machine fields in `spec` if the controller owns transitions.
 - **Require `subresources.status` when a controller exists and writes status**
 - **Conditions + `observedGeneration`**
-  - Recommend `status.conditions` using Kubernetes conventions.
-  - Recommend `status.observedGeneration` for tooling/GitOps correctness.
-  - Treat Conditions as a **map keyed by `type`** (not a chronological list): avoid duplicate `type` entries and prefer schema markers that enable map semantics for SSA/GitOps.
-  - Prefer a single high-signal **summary condition** (`Ready` for long-running resources; `Succeeded` for bounded execution) and keep other Conditions secondary.
-  - Prefer **state-style** Condition types (adjectives/past tense like `Ready`, `Degraded`, `Succeeded`). Transition-style names are usually less clear, but can be acceptable for long-running transitions if modeled as an observed state with consistent `True`/`False`/`Unknown` semantics.
-  - Avoid state-machine style `status.phase` for new APIs; prefer Conditions.
-  - Remember `status` is typically written via the `/status` subresource with separate RBAC.
+   - Recommend `status.conditions` and `status.observedGeneration` (Kubernetes conventions; critical for tooling/GitOps correctness).
+   - Model Conditions as a **map keyed by `type`**, not a chronological list: prefer schema markers (`x-kubernetes-map-type: map` with `x-kubernetes-list-map-keys: [type]`) for SSA/GitOps safety.
+   - Use **state-style Condition types** (adjectives/past tense: `Ready`, `Degraded`, `Succeeded`; avoid transition names or phases for new APIs).
+   - Include one high-signal **summary condition** (`Ready` for long-running; `Succeeded` for bounded execution).
+   - Ensure each Condition has semantic `True`/`False`/`Unknown` values with consistent meaning.
+   - Remember: `status` updates via `/status` subresource use separate RBAC.
 
-If needed, load [`./references/conditions-and-status.md`](./references/conditions-and-status.md)
+See [`./references/conditions-and-status.md`](./references/conditions-and-status.md) for deeper semantics.
 
-### 3) Schema correctness (prevent invalid stored objects)
+### 3) Schema correctness & validation (prevent invalid stored objects)
 
+Use a **3-step validation hierarchy**: always exhaust each level before moving to the next.
+
+#### Step 1: Schema validation (required)
 Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
 
 - Required fields for true invariants
 - Enums for constrained strings
 - Defaulting and nullable behavior
-- Cross-field invalid combinations
-  - If the schema cannot express it with basic validation, suggest CEL (`x-kubernetes-validations`) with minimal, targeted rules.
+- Type constraints, patterns, min/max bounds
+- Structural schema: ensure `spec.preserveUnknownFields: false` for strict validation and automatic version conversion
+- **Object references & relationships:** When a field refers to another Kubernetes object, use structured references (`fooRef` / `fooRefs`) per conventions. Name-only references (`fooName` as string) acceptable only for existing APIs, not new ones. Watch for cross-namespace references (security boundaries) and spec/status leakage. See [`./references/object-references.md`](./references/object-references.md) for details.
 
-- **Object references & relationships**
-  - When a field refers to another Kubernetes object, check that naming and schema follow Kubernetes API conventions:
-    - Object references: use `fooRef` / `fooRefs` (structured object(s)), also do this if only the name is needed (please load [`./references/object-references.md`](./references/object-references.md) for more details on the recommended naming conventions)
-    - Name-only references are acceptable for existing situations (e.g. `fooName` (string)), do NOT use this for new developemnts.
-  - Watch for cross-namespace references (security boundary) and for leaking copied values from the referenced object into `spec`/`status`.
+#### Step 2: CEL validation (before webhooks)
+When cross-field invariants or complex constraints cannot be expressed with basic OpenAPI rules, use CEL (`x-kubernetes-validations`):
 
-If needed, load [`./references/object-references.md`](./references/object-references.md).
-If needed, load [`./references/validation-and-cel.md`](./references/validation-and-cel.md).
+- Cross-field invalid combinations (e.g., "field A only allowed if field B is set")
+- Exactly-one-of constraints
+- Numeric range relationships between fields
+- Enum dependencies
+
+**Best practice:** Write minimal, targeted rules with clear error messages. CEL is stateless, auditable, and version-safe—always prefer it to webhooks.
+See [`./references/validation-and-cel.md`](./references/validation-and-cel.md) for examples.
+
+#### Step 3: Webhooks (only if Steps 1–2 are insufficient)
+Only recommend webhooks when schema and CEL cannot express the constraint. This is a significant operational decision. **Always double-check first:**
+
+- Can this be expressed with required fields, enums, or patterns?
+- Can this be expressed with CEL (stateless, auditable, version-safe)?
+- Is the webhook truly necessary, or is the controller solving it better?
+- Webhooks add latency, availability risk, and debugging complexity—operational costs often exceed benefits.
+
+If a webhook is necessary:
+- **Conversion webhooks:** Use only if structural schema conversion insufficient.
+- **Validation/mutation webhooks:** Configure with explicit timeouts, failurePolicy, and namespaceSelectors.
+- Validate webhook availability and latency in your rollout plan.
+
+See [`./references/versioning-and-migrations.md`](./references/versioning-and-migrations.md) for conversion strategy and [`./references/review-template.md`](./references/review-template.md) for operational checklist.
 
 ### 4) GitOps/SSA ergonomics
 
 Focus on patchability and stable diffs:
 
 - List semantics for arrays of objects
-  - If items have stable identity (e.g., `name`, `id`), prefer map-like lists:
-    - `x-kubernetes-list-type: map`
-    - `x-kubernetes-list-map-keys: ["..."]`
-- Identify ordering sensitivity and full-array replacement hazards.
+   - If items have stable identity (e.g., `name`, `id`), prefer map-like lists (`x-kubernetes-list-type: map` with `x-kubernetes-list-map-keys`).
+   - Identify ordering sensitivity and full-array replacement hazards.
 
-If needed, load [`./references/list-semantics-gitops-ssa.md`](./references/list-semantics-gitops-ssa.md).
+See [`./references/list-semantics-gitops-ssa.md`](./references/list-semantics-gitops-ssa.md).
 
 ### 5) Operator UX (kubectl)
 
-- Review/add `additionalPrinterColumns` for operator-facing UX:
-  - Ready / health signal
-  - Status message / reason
-  - Key spec fields
-- Do not duplicate default `AGE`.
+Review/add `additionalPrinterColumns` for operator-facing UX:
+- Ready / health signal
+- Status message / reason
+- Key spec fields
+- Never duplicate `AGE` (already shown by kubectl).
 
-If needed, load [`./references/printer-columns.md`](./references/printer-columns.md).
+See [`./references/printer-columns.md`](./references/printer-columns.md).
 
 ### 6) Compatibility & migration impact (mandatory)
 
-Always include an explicit compatibility assessment.
+Always include an explicit compatibility assessment:
 
 - Classify change as non-breaking vs potentially breaking.
-- Consider more than removals:
-  - tightening validation
-  - type changes
-  - list semantic changes
-  - defaulting changes
-  - semantic behavior changes
-- If version evolution is involved:
-  - serving multiple versions
-  - conversion webhook need
-  - storage version migration reminders
-  - deprecation playbook
+- Look beyond removals: tightening validation, type changes, list semantic changes, defaulting changes, semantic behavior shifts.
+- If version evolution is involved: plan served versions, conversion webhooks, storage migration, and deprecation playbook.
 
-If needed, load [`./references/versioning-and-migrations.md`](./references/versioning-and-migrations.md).
+See [`./references/versioning-and-migrations.md`](./references/versioning-and-migrations.md).
 
-### 7) Summarize
+### 7) Synthesize output
 
-- Provide ranked risks + why they matter.
-- Provide actionable changes + snippets.
-- Provide a minimal, PR-sized improvement plan.
-- Provide a copy/paste PR review template block.
+Follow the output template structure below:
+- Rank risks + explain impact.
+- List actionable changes with snippets.
+- Provide PR-sized improvement plan.
+- Include the PR review template (use [`./references/review-template.md`](./references/review-template.md) as the canonical template).
 
 ## Output format (always use this template)
 
@@ -157,6 +166,6 @@ If needed, load [`./references/versioning-and-migrations.md`](./references/versi
 2. …
 3. …
 
-### PR-ready review template (copy/paste)
+---
 
-Load and reuse the canonical template in [`./references/review-template.md`](./references/review-template.md). If it does not match the context, adapt it but keep the same section headings.
+**Template reference:** Use [`./references/review-template.md`](./references/review-template.md) as the canonical template. Adapt to context while preserving section headings.
