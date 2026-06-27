@@ -4,7 +4,8 @@ This file is intentionally **Kubebuilder/Go-focused**: how to express a good sta
 
 Canonical conceptual guidance (naming, semantics, common review flags) lives in:
 
-- [`../k8s-crd-design-review/references/conditions-and-status.md`](../k8s-crd-design-review/references/conditions-and-status.md:1)
+- [`../../k8s-crd-design-review/references/conditions-and-status.md`](../../k8s-crd-design-review/references/conditions-and-status.md:1)
+- [`../../k8s-crd-design-review/references/kstatus-readiness.md`](../../k8s-crd-design-review/references/kstatus-readiness.md:1) when the CRD should be Flux/Argo/kstatus-friendly.
 
 ## Baseline status shape (Go)
 
@@ -41,6 +42,9 @@ type FooStatus struct {
 Notes:
 
 - The controller should set `status.observedGeneration` when it updates `status`.
+- Also set `ObservedGeneration` on each `metav1.Condition` so consumers can detect stale condition values.
+- For long-running resources, prefer kstatus-compatible condition types: `Ready`, `Reconciling`, and `Stalled`.
+- Do not emit `Ready` only on success; set an initial `Ready=Unknown` or `Ready=False` so generic status tools do not misread an unknown CRD as current.
 - Bound the conditions array with `MaxItems` to prevent unbounded growth.
 
 ## Enable the status subresource (root marker)
@@ -70,7 +74,7 @@ Example (JSONPath varies by preference/tooling):
 
 For review guidance on which columns help operator UX (and common anti-patterns), see:
 
-- [`../k8s-crd-design-review/references/printer-columns.md`](../k8s-crd-design-review/references/printer-columns.md:1)
+- [`../../k8s-crd-design-review/references/printer-columns.md`](../../k8s-crd-design-review/references/printer-columns.md:1)
 
 ## Generate and verify
 
@@ -83,4 +87,4 @@ After adjusting Go types/markers:
 
 Then run a contract review pass using:
 
-- [`../k8s-crd-design-review/SKILL.md`](../k8s-crd-design-review/SKILL.md:1)
+- [`../../k8s-crd-design-review/SKILL.md`](../../k8s-crd-design-review/SKILL.md:1)

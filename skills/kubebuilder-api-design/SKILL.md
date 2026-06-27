@@ -155,7 +155,9 @@ For a compact “what marker do I need?” cheat-sheet (root markers, field vali
 
 Prefer `[]metav1.Condition` unless you have a strong reason to roll your own condition type. Include helper summary fields only if they serve UX.
 
-Read [`./references/status-and-conditions.md`](./references/status-and-conditions.md) (Kubebuilder/Go implementation appendix). For canonical conceptual semantics and review heuristics, defer to [`k8s-crd-design-review/references/conditions-and-status.md`](../k8s-crd-design-review/references/conditions-and-status.md).
+For long-running reconciled resources, design for kstatus-compatible readiness: `Ready` as the aggregate signal, `Reconciling` for active progress, `Stalled` for blocked/broken progress, and `observedGeneration` everywhere status freshness matters.
+
+Read [`./references/status-and-conditions.md`](./references/status-and-conditions.md) (Kubebuilder/Go implementation appendix). For canonical conceptual semantics and review heuristics, defer to [`k8s-crd-design-review/references/conditions-and-status.md`](../k8s-crd-design-review/references/conditions-and-status.md), especially [`../k8s-crd-design-review/references/kstatus-readiness.md`](../k8s-crd-design-review/references/kstatus-readiness.md) for Flux/Argo/kstatus-friendly CRDs.
 
 ### Step 3.5 — Kubebuilder workflow essentials (scaffolding + generation)
 
@@ -174,7 +176,7 @@ Give the user the standard Kubebuilder steps to regenerate CRDs and verify the s
 
 Then (recommended): run a contract review pass against the generated CRD YAML (or diff) using [`../k8s-crd-design-review/SKILL.md`](../k8s-crd-design-review/SKILL.md), focusing on compatibility/migration impact, lifecycle/status semantics, and SSA/GitOps ergonomics.
 
-When the user needs more API-shape guidance, point them to the [offical long read of the Kubernetes API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md).
+When the user needs more API-shape guidance, point them to the [official long read of the Kubernetes API conventions](https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md), especially [Spec and Status](https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md#spec-and-status) and [Typical status properties](https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties).
 
 ## Output format
 

@@ -20,7 +20,7 @@ This document focuses on **configuration references** — fields where users exp
 ## Source
 
 Derived from the upstream Kubernetes API conventions (see "Object references" section):
-https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md
+https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md
 
 ## Configuration References: Key conventions (review checklist)
 
@@ -228,4 +228,4 @@ If your use case involves users specifying configuration dependencies, use confi
   https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
 
 - **Upstream Kubernetes API conventions** (object references):
-  https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md
+  https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md

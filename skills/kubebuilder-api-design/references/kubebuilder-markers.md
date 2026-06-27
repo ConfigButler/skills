@@ -153,7 +153,7 @@ Special case: `metav1.Condition` lists should almost always be map-like, keyed b
 Conditions []metav1.Condition `json:"conditions,omitempty"`
 ```
 
-For more depth on list semantics, see [`../k8s-crd-design-review/references/list-semantics-gitops-ssa.md`](../k8s-crd-design-review/references/list-semantics-gitops-ssa.md:1).
+For more depth on list semantics, see [`list-semantics-gitops-ssa.md`](../../k8s-crd-design-review/references/list-semantics-gitops-ssa.md:1).
 
 ## Printer columns
 
@@ -163,6 +163,6 @@ Examples:
 
 ```go
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
-// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`,priority=0
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`,priority=0
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`,priority=1
 ```

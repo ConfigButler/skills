@@ -1,7 +1,7 @@
 ---
 name: k8s-crd-design-review
 description: |
-  Use when reviewing Kubernetes CustomResourceDefinition (CRD) YAML (full manifests or diffs) as the compiled API contract. Topics: schema/validation (3-step hierarchy: schema → CEL → webhooks only if necessary), spec/status boundaries, conditions/observedGeneration conventions, object-reference modeling resource relationships: one-to-one, one-to-many), SSA/GitOps list semantics, printer columns, and compatibility/migration risk (breaking changes, versioning, rollout). Not for Kubebuilder Go-type selection; use kubebuilder-api-design instead.
+  Use when reviewing Kubernetes CustomResourceDefinition (CRD) YAML (full manifests or diffs) as the compiled API contract. Topics: schema/validation (3-step hierarchy: schema → CEL → webhooks only if necessary), spec/status boundaries, state/phase vs conditions, conditions/observedGeneration conventions, kstatus-compatible Ready/Reconciling/Stalled readiness, object-reference modeling resource relationships: one-to-one, one-to-many), SSA/GitOps list semantics, printer columns, and compatibility/migration risk (breaking changes, versioning, rollout). Not for Kubebuilder Go-type selection; use kubebuilder-api-design instead.
 ---
 
 # Kubernetes CRD Design Review
@@ -43,10 +43,12 @@ If key info is missing, ask for it before concluding compatibility/migration:
    - Model Conditions as a **map keyed by `type`**, not a chronological list: prefer schema markers (`x-kubernetes-map-type: map` with `x-kubernetes-list-map-keys: [type]`) for SSA/GitOps safety.
    - Use **state-style Condition types** (adjectives/past tense: `Ready`, `Degraded`, `Succeeded`; avoid transition names or phases for new APIs).
    - Include one high-signal **summary condition** (`Ready` for long-running; `Succeeded` for bounded execution).
+   - For GitOps/status-tool compatibility, check the kstatus shape: `Ready` as aggregate current-state signal, `Reconciling=True` for active progress, `Stalled=True` for blocked/broken progress, and current `observedGeneration`.
+   - Flag `status.phase` / `status.state` when it is the primary lifecycle contract for a new CRD; conditions should be the primary machine-readable readiness contract.
    - Ensure each Condition has semantic `True`/`False`/`Unknown` values with consistent meaning.
    - Remember: `status` updates via `/status` subresource use separate RBAC.
 
-See [`./references/conditions-and-status.md`](./references/conditions-and-status.md) for deeper semantics.
+See [`./references/conditions-and-status.md`](./references/conditions-and-status.md) for deeper semantics and [`./references/kstatus-readiness.md`](./references/kstatus-readiness.md) for kstatus compatibility.
 
 ### 3) Schema correctness & validation (prevent invalid stored objects)
 
@@ -60,7 +62,7 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
 - Defaulting and nullable behavior
 - Type constraints, patterns, min/max bounds
 - Structural schema: ensure `spec.preserveUnknownFields: false` for strict validation and automatic version conversion
-- **Object references & relationships:** When a field refers to another Kubernetes object, use structured references (`fooRef` / `fooRefs`) per conventions. Name-only references (`fooName` as string) acceptable only for existing APIs, not new ones. Watch for cross-namespace references (security boundaries) and spec/status leakage. 
+- **Object references & relationships:** When a field refers to another Kubernetes object, use structured references (`fooRef` / `fooRefs`) per conventions. Name-only references (`fooName` as string) acceptable only for existing APIs, not new ones. Watch for cross-namespace references (security boundaries) and spec/status leakage.
   - Use an object with `group`, `kind`, and `name`
       - add defaults and enum constraints for `group` and `kind`
       - require `name`: always

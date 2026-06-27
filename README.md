@@ -1,4 +1,4 @@
-A small collection of reusable “skills” for AI agents for desiging CRDs.
+A small collection of reusable “skills” for AI agents for designing CRDs.
 
 ## Install with `npx skills`
 
@@ -21,4 +21,4 @@ Use the npx skills and check in your agent if the skill shows up in the list of 
 
 ## Contributing
 
-Bug reports or PRs are welcome, but do make sure to checkout with submodules. For normal usage not needed: but very usefull to check if your addition is in line with the offical Kubernetes docs (see [docs/README.md](docs/README.md).
+Bug reports or PRs are welcome, but do make sure to check out with submodules. For normal usage not needed: but very useful to check if your addition is in line with the official Kubernetes docs (see [docs/README.md](docs/README.md)).

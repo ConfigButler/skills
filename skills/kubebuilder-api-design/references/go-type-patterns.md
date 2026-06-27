@@ -2,7 +2,7 @@
 
 Use this file when mapping an API shape into idiomatic Kubernetes Go types in Kubebuilder projects.
 
-For marker syntax (validation/defaulting, list semantics, printer columns), see [`api_reference.md`](skills/kubebuilder-api-design/references/api_reference.md:1).
+For marker syntax (validation/defaulting, list semantics, printer columns), see [`api_reference.md`](./api_reference.md:1).
 
 ## Contents
 
@@ -82,7 +82,7 @@ For references to other objects, choose one of:
 SecretName string `json:"secretName"`
 ```
 
-Add validation markers (e.g., `MinLength`) as appropriate; see [`api_reference.md`](skills/kubebuilder-api-design/references/api_reference.md:31).
+Add validation markers (e.g., `MinLength`) as appropriate; see [`api_reference.md`](./api_reference.md:31).
 
 2. Structured reference (name + optional namespace, plus kind/group if needed):
 
@@ -97,22 +97,23 @@ type NamespacedObjectReference struct {
 }
 ```
 
-If you need to reference arbitrary Kinds, avoid inventing your own schema blindly—read [`../k8s-crd-design-review/references/object-references.md`](../k8s-crd-design-review/references/object-references.md:1).
+If you need to reference arbitrary Kinds, avoid inventing your own schema blindly; read [`object-references.md`](../../k8s-crd-design-review/references/object-references.md:1).
 
-## Enums and unions (best-effort)
+## Enums, state, and unions (best-effort)
 
 Enums:
 
 ```go
-type Phase string
+type Mode string
 
 const (
-  PhasePending Phase = "Pending"
-  PhaseReady   Phase = "Ready"
-  PhaseFailed  Phase = "Failed"
+  ModeAutomatic Mode = "Automatic"
+  ModeManual    Mode = "Manual"
 )
 ```
 
-When you want the CRD schema to restrict allowed values, add an enum validation marker; see [`api_reference.md`](skills/kubebuilder-api-design/references/api_reference.md:31).
+When you want the CRD schema to restrict allowed values, add an enum validation marker; see [`api_reference.md`](./api_reference.md:31).
+
+Avoid using a `Phase`/`State` enum as the primary lifecycle contract in `status` for new long-running CRDs. Prefer `[]metav1.Condition` with `Ready` plus domain-specific conditions, and use enum summaries only as secondary UX fields when they add real value.
 
 OpenAPI unions (`oneOf`) are limited in CRDs. Prefer explicit structs with clear fields over clever unions.

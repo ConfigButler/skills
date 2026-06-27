@@ -155,9 +155,9 @@ spec:
                 format: date-time
     additionalPrinterColumns:
     # ✅ GOOD: Show health signal; kubectl already shows AGE so don't duplicate it
-    - name: Phase
+    - name: Succeeded
       type: string
-      jsonPath: .status.phase
+      jsonPath: .status.conditions[?(@.type=="Succeeded")].status
       priority: 0
     - name: Message
       type: string

@@ -7,3 +7,6 @@
 [submodule "docs/kubernetes/community"]
 	path = docs/kubernetes/community
 	url = https://github.com/kubernetes/community.git
+[submodule "docs/kubernetes-sig/cli-utils"]
+	path = docs/kubernetes-sig/cli-utils
+	url = https://github.com/kubernetes-sigs/cli-utils.git
