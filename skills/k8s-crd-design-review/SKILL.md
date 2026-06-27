@@ -40,7 +40,7 @@ If key info is missing, ask for it before concluding compatibility/migration:
 - **Require `subresources.status` when a controller exists and writes status**
 - **Conditions + `observedGeneration`**
    - Recommend `status.conditions` and `status.observedGeneration` (Kubernetes conventions; critical for tooling/GitOps correctness).
-   - Model Conditions as a **map keyed by `type`**, not a chronological list: prefer schema markers (`x-kubernetes-map-type: map` with `x-kubernetes-list-map-keys: [type]`) for SSA/GitOps safety.
+   - Model Conditions as a **map keyed by `type`**, not a chronological list: prefer schema markers (`x-kubernetes-list-type: map` with `x-kubernetes-list-map-keys: [type]`) for SSA/GitOps safety.
    - Use **state-style Condition types** (adjectives/past tense: `Ready`, `Degraded`, `Succeeded`; avoid transition names or phases for new APIs).
    - Include one high-signal **summary condition** (`Ready` for long-running; `Succeeded` for bounded execution).
    - For GitOps/status-tool compatibility, check the kstatus shape: `Ready` as aggregate current-state signal, `Reconciling=True` for active progress, `Stalled=True` for blocked/broken progress, and current `observedGeneration`.
@@ -62,15 +62,11 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
 - Defaulting and nullable behavior
 - Type constraints, patterns, min/max bounds
 - Structural schema: ensure `spec.preserveUnknownFields: false` for strict validation and automatic version conversion
-- **Object references & relationships:** When a field refers to another Kubernetes object, use structured references (`fooRef` / `fooRefs`) per conventions. Name-only references (`fooName` as string) acceptable only for existing APIs, not new ones. Watch for cross-namespace references (security boundaries) and spec/status leakage.
-  - Use an object with `group`, `kind`, and `name`
-      - add defaults and enum constraints for `group` and `kind`
-      - require `name`: always
-      - you MAY (very unlikely) add `uid`: UID is assigned by the API server and is not user-friendly or stable for config. It changes if the object is deleted/recreated, therefore you should not use them in spec, but only for reporting on the status field.
-
-In Kubernetes APIs, users reference objects by name + namespace (or just name when same-namespace). The UID belongs in status/observed state, not desired state.Do only do this if you have a real requirement, name is the 'normal' way to reference a resource.
+- **Object references & relationships:** Prefer explicit `fooRef` / `fooRefs` fields when a CRD spec points at another object, especially if the target might later need `group`, `kind`, or `namespace`. Name-only fields (`fooName`) are acceptable for constrained same-kind/same-namespace references, but changing `fooName: string` to `fooRef: object` later is usually breaking.
+  - Require `name` inside a reference object; default/constrain `group` and `kind` when they are useful for tooling or future evolution.
   - Omit `namespace` unless you explicitly allow cross-namespace references.
-  - Avoid `apiVersion` in references.
+  - Avoid `apiVersion` in references; let the controller map versions.
+  - Keep UID/resourceVersion in `status`, not `spec`, unless there is an exceptional API requirement.
   - `dependsOn` is an advisable (community) deviation from the `fooRefs` advise. Use it when you explicitly model a dependency graph and your controller implements full DAG semantics (readiness definition, scope rules, cycle detection). See [`./references/object-references.md`](./references/object-references.md).
   - Use `parentRef` only for resources your operator directly manages; do not use it to model general relationships.
   - See [`./references/object-references.md`](./references/object-references.md) for schema examples and deeper guidance.

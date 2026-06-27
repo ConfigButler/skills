@@ -108,13 +108,13 @@ spec:
     
     # ❌ ANTIPATTERN: No printer columns
     # Users get no helpful output from `kubectl get workflows`
-    # They can't see health status, phase, or other important information
+    # They can't see health status, reason, or other important information
     #
     # Should include something like:
     # additionalPrinterColumns:
-    # - name: Phase
+    # - name: Ready
     #   type: string
-    #   jsonPath: .status.phase
+    #   jsonPath: .status.conditions[?(@.type=="Ready")].status
 
 # Migration guidance:
 # If you have an existing CRD with these antipatterns, see 

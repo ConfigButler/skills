@@ -34,7 +34,7 @@ Common:
 
 Whether a field is required is primarily expressed via Go types + `json` tags (pointer vs non-pointer, `omitempty` vs no `omitempty`).
 
-Keep the rules in one place: see [`go-type-patterns.md`](skills/kubebuilder-api-design/references/go-type-patterns.md:1).
+Keep the rules in one place: see [`go-type-patterns.md`](./go-type-patterns.md:1).
 
 Use this file mainly for validation/defaulting markers once you have the Go shape.
 
@@ -90,7 +90,7 @@ Items []Item `json:"items,omitempty"`
 
 ### List semantics for SSA
 
-Use these on list fields to declare the intended set/map semantics in the generated CRD schema (for the contract impact and GitOps/SSA review, see the canonical reference in [`../k8s-crd-design-review/references/list-semantics-gitops-ssa.md`](../k8s-crd-design-review/references/list-semantics-gitops-ssa.md:1)):
+Use these on list fields to declare the intended set/map semantics in the generated CRD schema (for the contract impact and GitOps/SSA review, see the canonical reference in [`list-semantics-gitops-ssa.md`](../../k8s-crd-design-review/references/list-semantics-gitops-ssa.md:1)):
 
 - Sets (unique items):
 

@@ -109,14 +109,8 @@ spec:
           status:
             type: object
             properties:
-              # ✅ GOOD: Structured status with clear fields
-              # Note: This workflow is designed for bounded execution (not long-running)
-              phase:
-                type: string
-                enum:
-                - Succeeded
-                - Failed
-                - Unknown
+              # ✅ GOOD: Structured status with Conditions as the lifecycle contract.
+              # This workflow is designed for bounded execution, so it uses Succeeded.
               conditions:
                 type: array
                 items:
@@ -125,6 +119,8 @@ spec:
                   - type
                   - status
                   - lastTransitionTime
+                  - reason
+                  - message
                   properties:
                     type:
                       type: string
@@ -134,6 +130,9 @@ spec:
                       - "True"
                       - "False"
                       - "Unknown"
+                    observedGeneration:
+                      type: integer
+                      format: int64
                     reason:
                       type: string
                     message:
@@ -147,6 +146,7 @@ spec:
                 - type
               observedGeneration:
                 type: integer
+                format: int64
               startTime:
                 type: string
                 format: date-time

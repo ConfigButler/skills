@@ -37,6 +37,7 @@ So review CRDs as "kstatus-compatible and Argo/Flux-friendly", not as "universal
 Useful upstream anchors:
 
 - kstatus Conditions: https://github.com/kubernetes-sigs/cli-utils/tree/master/pkg/kstatus#conditions
+- Helm HIP-0022, "Wait With kstatus": https://helm.sh/community/hips/hip-0022/
 - Flux: `fluxcd/flux2/pkg/status/status.go` imports `github.com/fluxcd/cli-utils/pkg/kstatus/...`.
 - Flux: `fluxcd/pkg/runtime/conditions/check/doc.go` describes status checks as mostly based on kstatus and expects `Ready` to be present in strict checks.
 - Argo CD: `argoproj/argo-cd/docs/operator-manual/health.md` has "Using kstatus" and "Using K8s observedGeneration field" guidance.
@@ -58,6 +59,7 @@ That makes the CRD usable in generic workflows:
 
 - Flux can poll and aggregate readiness without custom logic for every CRD.
 - Argo CD custom health checks can map your conditions to `Healthy`, `Progressing`, or `Degraded` predictably.
+- Helm HIP-0022 proposes using kstatus for `helm install --wait` / `helm upgrade --wait` in Helm 4, specifically so waits can include custom resources with a `Ready` condition.
 - `kubectl wait --for=condition=Ready` and printer columns tell the same story as GitOps health.
 - CI/CD and release automation can wait for convergence instead of sleeping or scraping logs.
 - Humans get a consistent reason/message trail when reconciliation is delayed or blocked.

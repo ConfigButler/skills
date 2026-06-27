@@ -125,7 +125,7 @@ Items []Item `json:"items,omitempty"`
 
 ### List semantics for SSA
 
-Use these markers to declare the list semantics you want in the generated CRD schema. For the contract impact and GitOps/SSA review heuristics, see the canonical reference in [`../k8s-crd-design-review/references/list-semantics-gitops-ssa.md`](../../k8s-crd-design-review/references/list-semantics-gitops-ssa.md):
+Use these markers to declare the list semantics you want in the generated CRD schema. For the contract impact and GitOps/SSA review heuristics, see the canonical reference in [`list-semantics-gitops-ssa.md`](../../k8s-crd-design-review/references/list-semantics-gitops-ssa.md):
 
 - Sets (unique items):
 

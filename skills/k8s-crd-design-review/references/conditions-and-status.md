@@ -99,7 +99,7 @@ openAPIV3Schema:
             - type
           items:
             type: object
-            required: [type, status, lastTransitionTime, reason]
+            required: [type, status, lastTransitionTime, reason, message]
             properties:
               type:
                 type: string
@@ -146,4 +146,5 @@ openAPIV3Schema:
 
 - Kubernetes API conventions, Spec and Status: https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 - Kubernetes API conventions, Typical status properties: https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+- Helm HIP-0022, "Wait With kstatus": https://helm.sh/community/hips/hip-0022/
 - Luis Ramirez, SuperOrbital, "Status and Conditions: Explained!": https://superorbital.io/blog/status-and-conditions/
