@@ -33,6 +33,13 @@ This section covers the conventions for fields where users reference other objec
 
 The suffix `Ref`/`Refs` is intentionally consistent; avoid ad-hoc names like `fooReference`, `fooObject`, `fooTarget`, etc., unless the purpose demands it (e.g. `targetRef`).
 
+Use the field name to communicate the relationship's role:
+
+- `targetRef`: the referenced object is the primary subject being applied to, acted on, or reconciled against.
+- `{kind}Ref`: the referenced object is a helper or dependency of a known kind, such as `secretRef`, `configMapRef`, or `serviceAccountRef`.
+- `sourceRef` / `sinkRef`: the API models directional data flow.
+- `selector`: the API refers to a set of objects by labels rather than one object by identity.
+
 ### When is name-only (`fooName`) the right choice?
 
 Prefer a structured reference (`fooRef`) by default when you can: being explicit in the schema tends to age better, is friendlier to tooling (e.g., editor plugins that allow to "jump to definition"), and keeps future evolution additive.
@@ -53,11 +60,14 @@ If there is any reasonable chance you will later want qualifiers like `group`/`r
 - For **namespaced** resources, references should normally be **same-namespace**.
 - Cross-namespace references are discouraged because namespaces are security boundaries.
   - If you allow them anyway, explicitly document semantics (creation ordering, deletion behavior, permissions), and consider admission-time permission checks or double opt-in.
+  - Treat references to Secrets, credentials, ServiceAccounts, Routes/Gateways, and policy targets as especially sensitive. A controller that reads from or acts on a target in another namespace can become a confused deputy: the referrer asks a privileged controller to use access that the referrer would not otherwise have.
+  - Prefer an explicit producer-side grant, similar to Gateway API `ReferenceGrant`: the namespace that owns the target object opts in to allowing references from the consumer namespace. Missing grants should result in a clear Condition such as `Ready=False` / `Stalled=True` with a permission-oriented reason.
 
 ### Schema shape
 
 - Prefer a structured object over a bare string as it gives your reference the flexibility to evolve (e.g., from single-kind to multi-kind).
 - Avoid including `apiVersion` in references. The API conventions recommend letting controllers handle versioning. This is intentionally less explicit: it allows referenced resource schema versions to change over time. Controllers should be able to discover or map the correct version; hard-coding versions in references makes evolution and upgrades more brittle. The only exception is **field references**, where the schema version is required to interpret `fieldPath`.
+- Avoid generic Kubernetes reference shapes in new CRD specs unless the contract really matches every field they expose. Generic shapes such as core `ObjectReference` include fields like `uid`, `resourceVersion`, `apiVersion`, and `fieldPath`; if the controller ignores those fields, putting them in `spec` creates a misleading API. Prefer a CRD-owned reference object with only the fields the controller honors.
 
 ### Defaults & requiredness (practical guidance)
 
@@ -148,15 +158,19 @@ Notes:
 ## Configuration References: Controller behavior guidance
 
 - Assume the referenced object might not exist; surface a clear error via Conditions/Events.
+- Watch referenced objects when their changes affect reconciliation. For example, if `spec.secretRef` affects generated configuration, Secret updates should enqueue the referring CR.
 - Validate reference fields before using them as API path segments.
 - Do **not** modify the referenced object (avoid privilege escalation vectors).
 - Minimize copying values from the referenced object into the referrer (including `status` and Events/logs), to avoid leaking information a user may not have permission to read.
+- If cross-namespace references are enabled, check both the reference and the authorization/grant decision before reading or using target data.
 
 ## Configuration References: Common review flags
 
 - Reference fields not suffixed with `Ref`/`Refs`.
 - Cross-namespace references without explicit semantics and guardrails.
+- Cross-namespace references that rely only on the referrer's spec field, without a producer-side grant or equivalent authorization check.
 - Free-form strings used for "references" where a structured schema is expected.
+- Generic reference objects in `spec` with fields the controller does not honor, such as `uid` or `resourceVersion`.
 - Status/spec fields that echo data read from the referenced object without a clear, safe rationale.
 
 ## Lifecycle References
@@ -174,6 +188,7 @@ This section covers relationship types managed by controllers, not users. These 
 - **Lifecycle ownership**: Defines that the parent is responsible for the child.
 - **Garbage collection**: When the parent is deleted, Kubernetes automatically deletes children (unless `blockOwnerDeletion: true`).
 - **Finalizers**: Controllers can use finalizers to clean up before deletion.
+- **Namespace boundary**: Do not use owner references to cross namespace boundaries. A namespaced child should point only at an owner in the same namespace or at a cluster-scoped owner; a cluster-scoped child should not point at a namespaced owner.
 - **Not user-configured**: Users do not write `ownerReferences` in spec; controllers set them automatically.
 
 **Example**: A CRD MyDatabase might create a Deployment, a Service, and a ConfigMap as children. The MyDatabase controller sets `ownerReferences` on these objects pointing back to the MyDatabase instance.

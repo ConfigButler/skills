@@ -67,6 +67,7 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
   - Omit `namespace` unless you explicitly allow cross-namespace references.
   - Avoid `apiVersion` in references; let the controller map versions.
   - Keep UID/resourceVersion in `status`, not `spec`, unless there is an exceptional API requirement.
+  - Treat cross-namespace references as security-sensitive. Prefer same-namespace references; if cross-namespace is intentional, require explicit scope semantics and consider a ReferenceGrant-style producer opt-in.
   - `dependsOn` is an advisable (community) deviation from the `fooRefs` advise. Use it when you explicitly model a dependency graph and your controller implements full DAG semantics (readiness definition, scope rules, cycle detection). See [`./references/object-references.md`](./references/object-references.md).
   - Use `parentRef` only for resources your operator directly manages; do not use it to model general relationships.
   - See [`./references/object-references.md`](./references/object-references.md) for schema examples and deeper guidance.
