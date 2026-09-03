@@ -87,8 +87,20 @@ mapping could be ambiguous. `kind` is appropriate for a bounded, controller-defi
 
 ### Defaults, requiredness, and validation
 
-- Do not default the identity (`name`). Require it and reject `""`; `required: [name]` alone does
-  not make an empty string unusable.
+- Do not default the identity (`name`). Require it and reject `""` unless an empty value has a
+  documented meaning; `required: [name]` alone does not make an empty string unusable. Cluster API
+  is the documented exception: `Machine.spec.bootstrap.dataSecretName` accepts `""`
+  (`MinLength=0`) so managed node pools can declare that no bootstrap data is needed, while an
+  unset value keeps the Machine `Pending`
+  ([machine_types.go](https://github.com/kubernetes-sigs/cluster-api/blob/main/api/core/v1beta1/machine_types.go)).
+- Do not put `apiVersion` in an object reference; the controller chooses a served version. Cluster
+  API shows the cost of the alternative: its v1beta1 `Cluster.spec.infrastructureRef` is a core
+  `ObjectReference`, so every manifest pins a provider version that must be edited on each provider
+  upgrade (see the `v1beta2` pins inside a `v1beta1` Cluster in
+  [knr-ops](https://github.com/polarsquad/knr-ops/blob/6fea00d0e5dfbf5b54104e045698b4d379b3b64f/mgmt/aws/clusters/eu-west-1/staging/cluster.yaml)).
+  v1beta2 replaced it with `ContractVersionedObjectReference` (`apiGroup` + `kind` + `name`) and
+  resolves the version from CRD contract labels
+  ([cluster_types.go](https://github.com/kubernetes-sigs/cluster-api/blob/main/api/core/v1beta2/cluster_types.go)).
 - Omit `namespace` for a same-namespace relationship. If it is present, make its defaulting and
   authorization semantics explicit rather than silently treating empty as another namespace.
 - Do not add defaulted, enum-constrained `group` or `kind` to a fixed-kind reference. They are not

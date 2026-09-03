@@ -200,8 +200,8 @@ and output relationships, which navigation tooling must model differently.
 | Ecosystem | Reference form | What it means |
 | --- | --- | --- |
 | [Flux][flux] | Fixed: `name`; sources: `kind` + `name` | Bounded choice. |
-| [ESO][eso] | Secret: `name` + `key`; store adds `kind` | Scope choice. |
-| [cert-manager][cm] | issuer: `name` + `kind` + `group` | Issuer choice. |
+| [ESO][eso] | store: `name` + `kind`; `remoteRef.key` is external | Scope choice. |
+| [cert-manager][cm] | issuer: `name`; `kind`, `group` defaulted | Open issuer set. |
 | [Cluster API][capi] | `apiGroup` + `kind` + `name` | Provider target. |
 | [Crossplane][xp] | `...Ref`: name or selector | Codegen knows target. |
 | [Kustomize][k] | `x-kubernetes-object-ref-*` | Transformer hint. |
@@ -210,10 +210,25 @@ and output relationships, which navigation tooling must model differently.
 
 `kind` appears when it selects a target with meaningfully different behavior:
 for example a source type, issuer, or namespaced versus cluster-scoped store.
-It is not merely descriptive metadata for a fixed target. Conversely, a
-SealedSecret is a recipe for an output Secret, not a reference to an existing
-Secret; an editor should present a separate `produces` edge, not treat its
-template as an object reference.
+It is not merely descriptive metadata for a fixed target. cert-manager's
+`issuerRef` defaults `kind` to `Issuer` and `group` to `cert-manager.io`
+([IssuerReference][cm-type]); that is permitted by the defaults rule because
+external issuers make the target set open-ended, so omitting the selector has a
+real meaning. Conversely, a SealedSecret is a recipe for an output Secret, not a
+reference to an existing Secret; an editor should present a separate `produces`
+edge, not treat its template as an object reference.
+
+A production layout confirms the survey. [knr-ops][knr] (Flux + Cluster API +
+ACK) writes bounded `{kind, name}` references for every Flux source, GVK-pinned
+`{apiVersion, kind, name}` references for Cluster API v1beta1 objects, a
+wrapped `roleRef: {from: {name, namespace}}` for ACK, and plain scalar names
+(`clusterName`, `dataSecretName`, `secretName`) for fixed kinds. Several of its
+relationships have no reference field at all: label selectors on
+`ClusterResourceSet`, the `<cluster>-kubeconfig` naming convention, and ACK
+references that resolve to AWS ARNs rather than objects. A navigation tool that
+follows only `*Ref` fields misses most of that graph; the ACK wrapper and the
+selector, produces, convention, and external-target edges are follow-up work
+for this proposal.
 
 Two examples are especially relevant. Cluster API's
 `ContractVersionedObjectReference` contains Group, Kind, and name, then resolves
@@ -253,8 +268,10 @@ practices without requiring every API to adopt the same instance shape.
 [argo]: https://github.com/argoproj/argo-cd/blob/master/pkg/apis/application/v1alpha1/types.go#L2193-L2209
 [capi]: https://github.com/kubernetes-sigs/cluster-api/blob/main/api/core/v1beta2/common_types.go#L390-L417
 [cm]: https://cert-manager.io/docs/usage/certificate/
+[cm-type]: https://github.com/cert-manager/cert-manager/blob/master/pkg/apis/meta/v1/types.go
 [eso]: https://github.com/external-secrets/external-secrets/blob/main/apis/externalsecrets/v1/externalsecret_types.go
 [flux]: https://fluxcd.io/flux/components/kustomize/api/v1/
 [k]: https://github.com/kubernetes-sigs/kustomize/blob/master/api/internal/accumulator/loadconfigfromcrds.go#L116-L125
+[knr]: https://github.com/polarsquad/knr-ops/tree/6fea00d0e5dfbf5b54104e045698b4d379b3b64f
 [ss]: https://github.com/bitnami/sealed-secrets#sealedsecrets-as-templates-for-secrets
 [xp]: https://github.com/crossplane/crossplane-tools#reference-resolvers
