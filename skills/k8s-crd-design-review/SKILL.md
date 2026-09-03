@@ -68,6 +68,8 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
   `{name}` (and an explicit `namespace` only when cross-namespace use is intentional).
   - Require a non-empty `name` inside a reference object. Put `group`, `kind`, or `resource` in the instance only when the user actually selects a target type; do not default a single allowed value merely as speculative tooling metadata.
   - For a fixed-kind `{name}` reference, ensure the field name and field documentation identify the target kind and scope. A generic navigation tool needs a separately published relationship map; ordinary CRD structural schema does not encode that mapping.
+  - When a review concerns editor navigation or resource-graph tooling, see
+    [`./references/relationship-metadata.md`](./references/relationship-metadata.md).
   - Omit `namespace` unless you explicitly allow cross-namespace references.
   - Avoid `apiVersion` in references; let the controller map versions.
   - Keep UID/resourceVersion in `status`, not `spec`, unless there is an exceptional API requirement.

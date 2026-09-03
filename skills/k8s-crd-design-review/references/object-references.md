@@ -181,6 +181,9 @@ published through a tool-specific CRD extension that is known to survive the gen
 server. It is not a Kubernetes-standard schema feature. Keep the map and the controller's target
 mapping under the same compatibility discipline as the CRD itself.
 
+For an intentionally small, tool-facing proposal and its upstream precedents, see
+[CRD relationship metadata](./relationship-metadata.md).
+
 ## Configuration References: Controller behavior guidance
 
 - Assume the referenced object might not exist; surface a clear error via Conditions/Events.
