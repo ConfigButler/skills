@@ -167,13 +167,23 @@ manifest only duplicates that hidden relationship; it does not make the relation
 discoverable or safe to trust.
 
 Tool authors should publish or consume a versioned relationship map alongside the CRD contract.
-The map must identify the referrer GVK, field path, target GVK or allowed target set, and namespace
-semantics. For example:
+The map must identify the referrer Group/Version/Kind, field path, target Group/Resource or allowed
+target set, and namespace semantics. An object-reference target deliberately has no version: the
+controller and tool choose a served version. A field reference is the exception because its
+`fieldPath` can have different meaning in different target versions. For example:
 
 ```yaml
 references:
-  - referrer: {group: configbutler.ai, kind: GitTarget, path: .spec.gitProviderRef}
-    target: {group: configbutler.ai, kind: GitProvider, scope: sameNamespace}
+  - referrer:
+      group: configbutler.ai
+      version: v1alpha3
+      kind: GitTarget
+      path: .spec.gitProviderRef
+    target:
+      group: configbutler.ai
+      resource: gitproviders
+    namespace:
+      mode: SameNamespace
 ```
 
 The map may be generated from API-owned reference types, maintained as a plugin registry, or
