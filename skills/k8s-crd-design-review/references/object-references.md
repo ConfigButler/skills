@@ -40,20 +40,27 @@ Use the field name to communicate the relationship's role:
 - `sourceRef` / `sinkRef`: the API models directional data flow.
 - `selector`: the API refers to a set of objects by labels rather than one object by identity.
 
-### When is name-only (`fooName`) the right choice?
+### Reference shape: separate syntax from resolution
 
-Prefer a structured reference (`fooRef`) by default when you can: being explicit in the schema tends to age better, is friendlier to tooling (e.g., editor plugins that allow to "jump to definition"), and keeps future evolution additive.
+`fooRef` means that the field is a reference object. It does **not** mean that every instance must
+repeat a Group/Kind/Version. A fixed-kind reference with only a `name` is still structured:
 
-Using a plain string name is still **allowed**, but treat it as an optimization for very constrained cases where **the controller can unambiguously infer everything else**. 
+```yaml
+gitProviderRef:
+  name: platform
+```
 
-`fooName` is ok-ish when the following are all true:
+The field name, description, and controller contract say that `gitProviderRef` names a
+`GitProvider`; the object supplies the identity that varies per instance. This is the upstream
+single-resource pattern.
 
-- The reference is **always to exactly one resource type** (controller has a fixed GVR / kind).
-- The reference is **same-namespace** (or the referenced object is cluster-scoped), so `namespace` does not need to be expressed.
-- You do not need qualifiers like `group`, `kind`, or `fieldPath`.
-- You do not expect the reference to evolve into multi-kind or cross-namespace.
+A bare string such as `fooName: platform` is also a valid API choice when the contract genuinely
+is and will remain only a name. Do not flag it merely for being a string. Prefer `fooRef: {name}`
+for a new API when treating the value as a named, self-contained relationship improves consistency
+or the relationship is likely to gain a field such as `namespace`.
 
-If there is any reasonable chance you will later want qualifiers like `group`/`resource`/`kind`, cross-namespace support, multi-kind support, or better UX for "reference browsing", start with `fooRef`. Changing a field from `fooName: string` to `fooRef: object` is typically a **breaking API change**.
+Changing a bare string to an object is usually breaking. Starting with a `{name}` object avoids
+that shape change, but it does not justify storing fields that the controller never reads.
 
 ### Namespace scope
 
@@ -63,73 +70,55 @@ If there is any reasonable chance you will later want qualifiers like `group`/`r
   - Treat references to Secrets, credentials, ServiceAccounts, Routes/Gateways, and policy targets as especially sensitive. A controller that reads from or acts on a target in another namespace can become a confused deputy: the referrer asks a privileged controller to use access that the referrer would not otherwise have.
   - Prefer an explicit producer-side grant, similar to Gateway API `ReferenceGrant`: the namespace that owns the target object opts in to allowing references from the consumer namespace. Missing grants should result in a clear Condition such as `Ready=False` / `Stalled=True` with a permission-oriented reason.
 
-### Schema shape
+### Choose the minimum complete reference
 
-- Prefer a structured object over a bare string as it gives your reference the flexibility to evolve (e.g., from single-kind to multi-kind).
-- Avoid including `apiVersion` in references. The API conventions recommend letting controllers handle versioning. This is intentionally less explicit: it allows referenced resource schema versions to change over time. Controllers should be able to discover or map the correct version; hard-coding versions in references makes evolution and upgrades more brittle. The only exception is **field references**, where the schema version is required to interpret `fieldPath`.
-- Avoid generic Kubernetes reference shapes in new CRD specs unless the contract really matches every field they expose. Generic shapes such as core `ObjectReference` include fields like `uid`, `resourceVersion`, `apiVersion`, and `fieldPath`; if the controller ignores those fields, putting them in `spec` creates a misleading API. Prefer a CRD-owned reference object with only the fields the controller honors.
+Classify the relationship before recommending a shape. The fields in `spec` must represent a
+choice the API supports today, not metadata a future tool might want.
 
-### Defaults & requiredness (practical guidance)
+| Relationship | Instance shape | Controller responsibility |
+|---|---|---|
+| Fixed kind | `{name}`; add `namespace` only when the relationship intentionally crosses namespaces | Knows the target Group/Resource and chooses a served version. |
+| Bounded set of kinds | `{kind, name}` and `namespace` when needed; add `group` only if it disambiguates a real choice | Validates the supported combinations and maps each to a resource. |
+| Arbitrary object | `{group, resource, name}` and optional namespace | Uses discovery and reads only universal object data. |
+| Field reference | Object identity plus `fieldPath` and the version required to interpret it | Validates and reads the declared field. |
 
-- Do not default the *identity* (`name`). A reference without a `name` is not actionable.
-- Defaulting *qualifiers* like `group` / `kind` **can be a good UX and tooling-friendly design** when the reference is currently single-kind and you want users to be able to write:
+Use `resource` rather than `kind` when a reference is genuinely generic or a dynamic Kind-to-resource
+mapping could be ambiguous. `kind` is appropriate for a bounded, controller-defined mapping.
 
-  ```yaml
-  targetRef:
-    name: my-name
-  ```
+### Defaults, requiredness, and validation
 
-  This keeps the schema explicit enough that tools can infer what is being referenced, while keeping the authoring surface small.
-
-- Treat defaults as part of the API contract:
-  - Changing defaults later can be a semantic breaking change.
-  - If you anticipate expanding to additional target types in the future, you can keep the existing defaults for backward compatibility and add optional fields/validation to support additional types.
-
-- If a reference is required for the resource to be meaningful, make the reference field required (e.g., require `fooRef` or `fooName` in `spec`).
-- Within a `*Ref` object, require the identifying parts: `name` (and `namespace` only if you explicitly allow cross-namespace references). Pick defaults for `group` and `kind` when possible.
-- Prefer omitting `namespace` (assume same-namespace) over defaulting it. If you do include `namespace`, treat it as an explicit, security-sensitive choice.
-
-Example (single-kind today, future-proof for later):
-
-```yaml
-targetRef:
-  properties:
-    group:
-      type: string
-      default: example.com
-    kind:
-      type: string
-      default: GitTarget
-      enum: [GitTarget]
-    name:
-      type: string
-  required: [name]
-```
+- Do not default the identity (`name`). Require it and reject `""`; `required: [name]` alone does
+  not make an empty string unusable.
+- Omit `namespace` for a same-namespace relationship. If it is present, make its defaulting and
+  authorization semantics explicit rather than silently treating empty as another namespace.
+- Do not add defaulted, enum-constrained `group` or `kind` to a fixed-kind reference. They are not
+  user intent, create another compatibility surface, and make a one-kind API look polymorphic.
+- A type selector may be required or may have a default only when omitting it has a real, documented
+  meaning in a relationship that actually supports more than one target type.
+- Treat every default as part of the public API contract.
 
 ## Configuration References: Recommended schemas
 
 This section shows schema patterns for common reference use cases.
 
-### Single-kind reference (controller knows GVR)
+### Single-kind reference (controller knows the target)
 
-For single-kind references, the conventions allow the controller to hard-code qualifiers. If you choose to include qualifiers for clarity or future-proofing, keep them defaulted and constrain them via enum. For example, a field that references a secret:
+The target type and scope are fixed by the API. The instance names it; it does not restate facts
+the controller already knows. Put the fixed target and scope in the field description so a human
+and a schema-aware tool have the same contract.
 
 ```yaml
 connectionSecretRef:
+  description: Names a Secret in this object's namespace that holds connection credentials.
+  type: object
+  required: [name]
   properties:
     name:
       type: string
-    group:
-      type: string
-      default: ""
-    kind:
-      type: string
-      default: Secret
-      enum: [Secret]
-  required: [name]
+      minLength: 1
 ```
 
-Example usage (still lean due to defaults):
+Example usage:
 
 ```yaml
 spec:
@@ -137,23 +126,60 @@ spec:
     name: my-secret
 ```
 
-### Multi-kind reference (bounded set of supported types)
+### Bounded multi-kind reference
 
-Use when the reference can point to more than one type.
+Use this when the user chooses between a known, finite set of types. `sourceRef` is a good role
+name when the kinds are different ways to supply the same input. This resembles Flux's source
+references: `kind` is present because it changes the target, not because it is metadata.
 
 ```yaml
 spec:
-  targetRef:
-    group: example.com
-    kind: Widget
-    name: my-widget
+  sourceRef:
+    kind: GitRepository
+    name: platform
 ```
 
-Notes:
+Schema outline:
 
-- **Practice vs. spec**: upstream conventions prefer `group` + `resource` + `name`, but most APIs (e.g. Flux and Crossplane) use **GKV** in practice; this guide follows that reality.
-- Use `kind` only when your controller has a **predefined, unambiguous mapping** from kind to resource.
-- Including `group` avoids ambiguity and helps copy/paste portability.
+```yaml
+sourceRef:
+  description: Names a GitRepository or OCIRepository in source.example.com.
+  type: object
+  required: [kind, name]
+  properties:
+    kind:
+      type: string
+      enum: [GitRepository, OCIRepository]
+    name:
+      type: string
+      minLength: 1
+```
+
+Add `group` when the supported kinds span groups and the user must select the group. Validate the
+allowed group/kind pairs together.
+
+### Tooling and navigation
+
+Reference syntax alone is not a portable navigation protocol. A structural CRD schema can show
+that `gitProviderRef` has a `name`, but it does not declare that the field resolves to
+`configbutler.ai/GitProvider` in the referrer's namespace. Repeating a fixed Group/Kind in every
+manifest only duplicates that hidden relationship; it does not make the relationship universally
+discoverable or safe to trust.
+
+Tool authors should publish or consume a versioned relationship map alongside the CRD contract.
+The map must identify the referrer GVK, field path, target GVK or allowed target set, and namespace
+semantics. For example:
+
+```yaml
+references:
+  - referrer: {group: configbutler.ai, kind: GitTarget, path: .spec.gitProviderRef}
+    target: {group: configbutler.ai, kind: GitProvider, scope: sameNamespace}
+```
+
+The map may be generated from API-owned reference types, maintained as a plugin registry, or
+published through a tool-specific CRD extension that is known to survive the generator and API
+server. It is not a Kubernetes-standard schema feature. Keep the map and the controller's target
+mapping under the same compatibility discipline as the CRD itself.
 
 ## Configuration References: Controller behavior guidance
 
@@ -169,7 +195,7 @@ Notes:
 - Reference fields not suffixed with `Ref`/`Refs`.
 - Cross-namespace references without explicit semantics and guardrails.
 - Cross-namespace references that rely only on the referrer's spec field, without a producer-side grant or equivalent authorization check.
-- Free-form strings used for "references" where a structured schema is expected.
+- A scalar reference where the resolver needs additional identity, scope, or type-selection data.
 - Generic reference objects in `spec` with fields the controller does not honor, such as `uid` or `resourceVersion`.
 - Status/spec fields that echo data read from the referenced object without a clear, safe rationale.
 

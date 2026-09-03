@@ -62,8 +62,12 @@ Review the OpenAPI v3 schema (prefer the generated CRD YAML/diff):
 - Defaulting and nullable behavior
 - Type constraints, patterns, min/max bounds
 - Structural schema: ensure `spec.preserveUnknownFields: false` for strict validation and automatic version conversion
-- **Object references & relationships:** Prefer explicit `fooRef` / `fooRefs` fields when a CRD spec points at another object, especially if the target might later need `group`, `kind`, or `namespace`. Name-only fields (`fooName`) are acceptable for constrained same-kind/same-namespace references, but changing `fooName: string` to `fooRef: object` later is usually breaking.
-  - Require `name` inside a reference object; default/constrain `group` and `kind` when they are useful for tooling or future evolution.
+- **Object references & relationships:** Classify the relationship before judging its shape:
+  fixed-kind, bounded multi-kind, generic-object, or field reference. Prefer explicit `fooRef` /
+  `fooRefs` objects to a bare `fooName` string, but a fixed-kind reference normally needs only
+  `{name}` (and an explicit `namespace` only when cross-namespace use is intentional).
+  - Require a non-empty `name` inside a reference object. Put `group`, `kind`, or `resource` in the instance only when the user actually selects a target type; do not default a single allowed value merely as speculative tooling metadata.
+  - For a fixed-kind `{name}` reference, ensure the field name and field documentation identify the target kind and scope. A generic navigation tool needs a separately published relationship map; ordinary CRD structural schema does not encode that mapping.
   - Omit `namespace` unless you explicitly allow cross-namespace references.
   - Avoid `apiVersion` in references; let the controller map versions.
   - Keep UID/resourceVersion in `status`, not `spec`, unless there is an exceptional API requirement.
