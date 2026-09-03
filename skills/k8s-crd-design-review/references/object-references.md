@@ -164,7 +164,8 @@ Reference syntax alone is not a portable navigation protocol. A structural CRD s
 that `gitProviderRef` has a `name`, but it does not declare that the field resolves to
 `configbutler.ai/GitProvider` in the referrer's namespace. Repeating a fixed Group/Kind in every
 manifest only duplicates that hidden relationship; it does not make the relationship universally
-discoverable or safe to trust.
+discoverable or safe to trust. Kustomize reads `x-kubernetes-object-ref-*` hints for its own name
+transformer, but those hints are not a Kubernetes-wide relationship contract.
 
 Tool authors should publish or consume a versioned relationship map alongside the CRD contract.
 The map must identify the referrer Group/Version/Kind, field path, target Group/Resource or allowed

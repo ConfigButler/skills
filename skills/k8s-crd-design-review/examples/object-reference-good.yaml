@@ -3,6 +3,7 @@
 # See ../references/object-references.md for the decision model. A tool can
 # learn the fixed taskRef -> example.com/Task relationship from a published
 # relationship map; the manifest does not need no-op group and kind fields.
+# See ../references/relationship-metadata.md for the proposed map shape.
 
 ---
 # A Pipeline has a fixed-kind task reference and a bounded multi-kind source

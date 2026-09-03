@@ -7,7 +7,7 @@
 
 A CRD schema can describe the shape of `spec.gitProviderRef.name`, but it does
 not machine-readably say that the value resolves to a namespaced
-`gitops.configbutler.io` `gitproviders` resource. Editors, graph tools, and
+`configbutler.ai` `gitproviders` resource. Editors, graph tools, and
 GitOps-aware refactorers therefore need project-specific knowledge to provide
 "go to definition", find usages, safe rename, and dependency-graph features.
 
@@ -43,14 +43,14 @@ or more possible targets, and namespace semantics.
 version: v1alpha1
 references:
   - referrer:
-      group: gitops.configbutler.io
+      group: configbutler.ai
       version: v1alpha3
       kind: GitTarget
       path: .spec.gitProviderRef
     identity:
       namePath: .name
     targets:
-      - group: gitops.configbutler.io
+      - group: configbutler.ai
         resource: gitproviders
     namespace:
       mode: SameNamespace
@@ -92,8 +92,11 @@ references:
       path: .namespace
 ```
 
-The exact names are illustrative. A standard must precisely define the valid
-namespace modes and field-path syntax before declaring this wire format stable.
+The exact names are illustrative. Candidate namespace modes are
+`SameNamespace`, `FromField`, `SameNamespaceOrField`, and `ClusterScoped`.
+`SameNamespaceOrField` uses the named field when present and otherwise the
+referrer's namespace. A standard must precisely define these modes and the
+field-path syntax before declaring this wire format stable.
 
 ## Delivery path
 
@@ -108,12 +111,13 @@ metadata:
     relationships.configbutler.io/v1alpha1: |-
       references:
         - referrer:
+            group: configbutler.ai
             version: v1alpha3
             kind: GitTarget
             path: .spec.gitProviderRef
           identity: {namePath: .name}
           targets:
-            - group: gitops.configbutler.io
+            - group: configbutler.ai
               resource: gitproviders
           namespace: {mode: SameNamespace}
 ```
@@ -128,9 +132,19 @@ Avoid a hand-maintained map. A controller-gen extension or a small companion
 generator should emit the metadata from field-level declarations in the API
 types, then test that the metadata and generated CRD stay synchronized.
 
-### 3. Propose a Kubernetes schema extension only after adoption
+### 3. Standardize beyond Kustomize only after adoption
 
-The eventual form could be a property-level `x-kubernetes-reference` extension:
+Kustomize already reads the property-level
+`x-kubernetes-object-ref-api-version`, `x-kubernetes-object-ref-kind`, and
+`x-kubernetes-object-ref-name-key` hints when it loads CRD schemas into its
+name-reference transformer configuration. This is live, useful prior art—not a
+historical or Kubernetes-wide standard. Its model pins an API version and Kind,
+does not encode Group/Resource or namespace semantics, and has not become a
+shared SIG-tooling contract.
+
+After an annotation or registry prototype demonstrates cross-tool value, the
+eventual Kubernetes-defined form could be a property-level
+`x-kubernetes-reference` extension:
 
 ```yaml
 gitProviderRef:
@@ -142,15 +156,16 @@ gitProviderRef:
       minLength: 1
   x-kubernetes-reference:
     targets:
-      - group: gitops.configbutler.io
+      - group: configbutler.ai
         resource: gitproviders
     namespace:
       mode: SameNamespace
 ```
 
-This extension does not exist today. It would need an API-machinery proposal
-that specifies validation, preservation through conversion, and publication in
-OpenAPI. Consumers that do not understand it must be able to ignore it safely.
+`x-kubernetes-reference` does not exist as a Kubernetes-defined CRD extension
+today. It would need an API-machinery proposal that specifies validation,
+preservation through conversion, and publication in OpenAPI. Consumers that do
+not understand it must be able to ignore it safely.
 
 ## Non-goals
 
@@ -185,13 +200,15 @@ their installed CRDs alone.
   document the bounded `kind` choice and optional cross-namespace field.
 - [Flux Kustomize API reference](https://fluxcd.io/flux/components/kustomize/api/v1/)
   exposes `CrossNamespaceSourceReference` as a typed API contract.
-- [Historical Kustomize schema hints discussion](https://github.com/kubernetes-sigs/kustomize/issues/4095)
-  covers `x-kubernetes-object-ref-*` hints and why they did not become a shared
-  SIG-tooling contract.
+- [Kustomize CRD-schema loader](https://github.com/kubernetes-sigs/kustomize/blob/master/api/internal/accumulator/loadconfigfromcrds.go#L116-L125)
+  shows the live `x-kubernetes-object-ref-*` hints. They are Kustomize-specific
+  name-reference metadata, not a portable relationship contract.
+- [Kustomize issue #4095](https://github.com/kubernetes-sigs/kustomize/issues/4095)
+  records the practical difficulty of sharing those transformer configurations.
 - [Kubernetes CRD API reference](https://kubernetes.io/docs/reference/kubernetes-api/apiextensions/custom-resource-definition-v1/)
   lists the supported schema extensions available today.
 - [Kubernetes API union extension KEP](https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/1027-api-unions/README.md)
   is a useful precedent for defining a new `x-kubernetes-*` extension and
   preserving it through OpenAPI conversion.
-- [Gateway API ReferenceGrant](https://gateway-api.sigs.k8s.io/api-types/referencegrant/)
+- [Gateway API ReferenceGrant](https://gateway-api.sigs.k8s.io/reference/api-types/referencegrant/)
   is a precedent for making cross-namespace reference authorization explicit.

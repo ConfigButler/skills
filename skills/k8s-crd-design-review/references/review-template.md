@@ -4,7 +4,7 @@ Use this template as a PR review comment. Keep headings intact.
 
 ## Scope
 
-- **API(s):** <group>/<kind> (<versions>)
+- **API(s):** `<group>/<kind> (<versions>)`
 - **Change type:** new API | change to existing API
 - **Controller:** exists? yes/no; writes status? yes/no; ownership summary
 
@@ -34,10 +34,14 @@ Use this template as a PR review comment. Keep headings intact.
 - Cross-field constraints:
   - …
 - Object references & relationships:
-  - reference field naming (prefer `*Ref`/`*Refs` over `*Name`), namespace scoping, and any info-leak hazards
+  - prefer `*Ref`/`*Refs` objects for new APIs; a `*Name` string is acceptable
+    when the contract is only a name
+  - namespace scoping and any info-leak hazards
 - Webhook configuration:
-  - conversion webhook presence if serving multiple versions with complex schema differences
-  - validation/mutation webhook presence if advanced validation/mutation not covered by OpenAPI/CEL
+  - conversion webhook presence if serving multiple versions with complex schema
+    differences
+  - validation/mutation webhook presence if advanced validation/mutation is not
+    covered by OpenAPI/CEL
   - `spec.preserveUnknownFields: false` (structural schema) status
 
 ## GitOps/SSA ergonomics (lists, patchability)
