@@ -25,6 +25,9 @@ the public API, and falsely imply that the reference is polymorphic.
   kind is real intent.
 - **Use Group/Resource for targets.** A resource is the canonical API endpoint;
   Kind is safe only where a controller owns a predefined mapping.
+- **Do not assume a GVK/GVR bijection.** Use declared Group/Resource or trusted
+  discovery. If a mapping is absent or ambiguous, report the relationship as
+  unresolved rather than guessing.
 - **Declare namespace semantics.** Same-namespace, explicit-namespace, and
   cluster-scoped targets must be distinguishable. Cross-namespace authorization
   remains a separate concern, for example a `ReferenceGrant`-style opt-in.
@@ -53,10 +56,13 @@ references:
       mode: SameNamespace
 ```
 
-The target has no version: the controller and tooling resolve a served version
-of the declared Group/Resource. A tool may obtain the display Kind through
-discovery or the target CRD; it must not infer the resource from an arbitrary
-Kind.
+The referrer has a version because its schema path can change between CRD
+versions. The target deliberately has no version: an object reference identifies
+a Group/Resource, while the controller and tooling resolve a served version. A
+tool may obtain the display Kind through discovery or the target CRD; it must not
+infer the resource from an arbitrary Kind. A field reference is the exception:
+it needs a target version because a `fieldPath` can have different meaning in
+different versions.
 
 ### Bounded multi-kind example
 
