@@ -191,6 +191,43 @@ registry. A useful first interoperability test is whether one plugin can follow
 a ConfigButler fixed-kind reference and a Flux bounded source reference from
 their installed CRDs alone.
 
+## Ecosystem observations
+
+This is a small survey of published contracts, not a claim that one reference
+shape fits every relationship. It distinguishes input references from selector
+and output relationships, which navigation tooling must model differently.
+
+| Ecosystem | Reference form | What it means |
+| --- | --- | --- |
+| [Flux][flux] | Fixed: `name`; sources: `kind` + `name` | Bounded choice. |
+| [ESO][eso] | Secret: `name` + `key`; store adds `kind` | Scope choice. |
+| [cert-manager][cm] | issuer: `name` + `kind` + `group` | Issuer choice. |
+| [Cluster API][capi] | `apiGroup` + `kind` + `name` | Provider target. |
+| [Crossplane][xp] | `...Ref`: name or selector | Codegen knows target. |
+| [Kustomize][k] | `x-kubernetes-object-ref-*` | Transformer hint. |
+| [Sealed Secrets][ss] | Template produces a Secret | Output relation. |
+| [Argo CD][argo] | Config names; graph carries GVK + UID | Different models. |
+
+`kind` appears when it selects a target with meaningfully different behavior:
+for example a source type, issuer, or namespaced versus cluster-scoped store.
+It is not merely descriptive metadata for a fixed target. Conversely, a
+SealedSecret is a recipe for an output Secret, not a reference to an existing
+Secret; an editor should present a separate `produces` edge, not treat its
+template as an object reference.
+
+Two examples are especially relevant. Cluster API's
+`ContractVersionedObjectReference` contains Group, Kind, and name, then resolves
+the version from CRD contract labels. Crossplane keeps a managed-resource
+`...Ref` as a name or selector, while its generator receives the target Go type
+through an API-owned declaration. Both support this proposal's separation of
+author intent from target-mapping metadata. Crossplane's declaration is not
+published in the installed CRD, however, so another editor cannot use it alone.
+
+No surveyed project publishes a portable CRD relationship map. Kustomize's
+property hints are the closest deployed schema precedent, but are intentionally
+limited to its name transformer. A small generated map can build on these
+practices without requiring every API to adopt the same instance shape.
+
 ## Related work and source links
 
 - [Kubernetes API conventions: Object references](https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md)
@@ -212,3 +249,12 @@ their installed CRDs alone.
   preserving it through OpenAPI conversion.
 - [Gateway API ReferenceGrant](https://gateway-api.sigs.k8s.io/reference/api-types/referencegrant/)
   is a precedent for making cross-namespace reference authorization explicit.
+
+[argo]: https://github.com/argoproj/argo-cd/blob/master/pkg/apis/application/v1alpha1/types.go#L2193-L2209
+[capi]: https://github.com/kubernetes-sigs/cluster-api/blob/main/api/core/v1beta2/common_types.go#L390-L417
+[cm]: https://cert-manager.io/docs/usage/certificate/
+[eso]: https://github.com/external-secrets/external-secrets/blob/main/apis/externalsecrets/v1/externalsecret_types.go
+[flux]: https://fluxcd.io/flux/components/kustomize/api/v1/
+[k]: https://github.com/kubernetes-sigs/kustomize/blob/master/api/internal/accumulator/loadconfigfromcrds.go#L116-L125
+[ss]: https://github.com/bitnami/sealed-secrets#sealedsecrets-as-templates-for-secrets
+[xp]: https://github.com/crossplane/crossplane-tools#reference-resolvers
