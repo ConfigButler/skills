@@ -168,10 +168,11 @@ discoverable or safe to trust. Kustomize reads `x-kubernetes-object-ref-*` hints
 transformer, but those hints are not a Kubernetes-wide relationship contract.
 
 Tool authors should publish or consume a versioned relationship map alongside the CRD contract.
-The map must identify the referrer Group/Version/Kind, field path, target Group/Resource or allowed
-target set, and namespace semantics. An object-reference target deliberately has no version: the
-controller and tool choose a served version. A field reference is the exception because its
-`fieldPath` can have different meaning in different target versions. For example:
+The map must identify the referrer Group/Version/Kind, field path, identity paths, target
+Group/Resource or allowed target set, and namespace semantics. An object-reference target
+deliberately has no version: the controller and tool choose a served version. A field reference is
+the exception because its `fieldPath` can have different meaning in different target versions. For
+example:
 
 ```yaml
 references:
@@ -180,12 +181,17 @@ references:
       version: v1alpha3
       kind: GitTarget
       path: .spec.gitProviderRef
-    target:
-      group: configbutler.ai
-      resource: gitproviders
+    identity:
+      namePath: .name
+    targets:
+      - group: configbutler.ai
+        resource: gitproviders
     namespace:
       mode: SameNamespace
 ```
+
+A bounded-kind reference also declares `identity.selectorPath` and a `selectorValue` on each
+target; the full proposal shows that shape.
 
 The map may be generated from API-owned reference types, maintained as a plugin registry, or
 published through a tool-specific CRD extension that is known to survive the generator and API
